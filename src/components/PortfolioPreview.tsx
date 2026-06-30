@@ -80,7 +80,7 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
   const themeThemeStyles = getThemeStyles();
 
   // Simple copy HTML helper
-  const handleCopyHTML = () => {
+  const handleCopyHTML = async () => {
     const htmlSnippet = `
 <!DOCTYPE html>
 <html lang="en">
@@ -152,9 +152,14 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
 </html>
     `.trim();
 
-    navigator.clipboard.writeText(htmlSnippet);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(htmlSnippet);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Clipboard write failed:", err);
+      alert("Could not copy to clipboard. Your browser may have denied clipboard access.");
+    }
   };
 
   return (

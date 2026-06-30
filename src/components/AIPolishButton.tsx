@@ -16,25 +16,38 @@ export default function AIPolishButton({ currentText, onUpdate, fieldName }: AIP
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/edit-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: currentText,
-          command,
-          fieldName,
-        }),
-      });
+      let response: Response;
+      try {
+        response = await fetch("/api/edit-content", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: currentText,
+            command,
+            fieldName,
+          }),
+        });
+      } catch (networkErr) {
+        setError("Network error: could not reach the server.");
+        return;
+      }
 
-      const json = await response.json();
+      let json;
+      try {
+        json = await response.json();
+      } catch (jsonErr) {
+        setError(`Server returned an invalid response (HTTP ${response.status}).`);
+        return;
+      }
+
       if (json.success && json.enhancedText) {
         onUpdate(json.enhancedText);
       } else {
         setError(json.error || "Enhancement failed.");
       }
     } catch (err: any) {
-      console.error(err);
-      setError("Server error.");
+      console.error("AI polish error:", err);
+      setError(err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }

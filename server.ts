@@ -48,6 +48,10 @@ async function startServer() {
   // API Route: Parse Resume PDF Text and Structure using Gemini
   app.post("/api/parse-resume", async (req, res) => {
     try {
+      if (!apiKey) {
+        return res.status(503).json({ success: false, error: "GEMINI_API_KEY is not configured. AI features are unavailable." });
+      }
+
       const { fileData, fileName } = req.body;
 
       if (!fileData) {
@@ -197,8 +201,24 @@ Convert the extracted details into a flawless resume profile JSON structure.`;
         });
       }
 
-      const responseText = response.text || "{}";
-      const structuredData = JSON.parse(responseText.trim());
+      const responseText = response.text;
+      if (!responseText || !responseText.trim()) {
+        return res.status(502).json({
+          success: false,
+          error: "Gemini returned an empty response. The document may be unreadable or the model could not extract data.",
+        });
+      }
+
+      let structuredData;
+      try {
+        structuredData = JSON.parse(responseText.trim());
+      } catch (parseError: any) {
+        console.error("Failed to parse Gemini JSON response:", parseError.message, "Raw text:", responseText.substring(0, 200));
+        return res.status(502).json({
+          success: false,
+          error: "Gemini returned malformed JSON. Please try uploading the document again.",
+        });
+      }
 
       return res.json({
         success: true,
@@ -217,6 +237,10 @@ Convert the extracted details into a flawless resume profile JSON structure.`;
   // API Route: Tailor or Enhance individual fields with custom prompt (shorten, professionalize, bullet-points, expand)
   app.post("/api/edit-content", async (req, res) => {
     try {
+      if (!apiKey) {
+        return res.status(503).json({ success: false, error: "GEMINI_API_KEY is not configured. AI features are unavailable." });
+      }
+
       const { text, command, fieldName } = req.body;
 
       if (!text) {
@@ -299,4 +323,7 @@ Output rules:
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error("Fatal: Server failed to start:", err);
+  process.exit(1);
+});
