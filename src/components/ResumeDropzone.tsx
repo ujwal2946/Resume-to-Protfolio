@@ -1,6 +1,9 @@
 import React, { useState, useRef } from "react";
 import { UploadCloud, FileText, Loader2, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
 import { PortfolioData } from "../types";
+import { detectFileType } from "../utils/parseUtils";
+import { mapRawToPortfolio } from "../utils/portfolioMapper";
+import { apiPost } from "../utils/apiClient";
 
 interface ResumeDropzoneProps {
   onParseComplete: (data: PortfolioData) => void;
@@ -50,87 +53,33 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
 
   const handleFile = async (file: File) => {
     if (!file) return;
-    
-    const name = file.name || "";
-    let ext = name.split(".").pop()?.toLowerCase();
-    if (!ext) {
-      ext = "";
-    }
-    
-    const fileType = (file.type || "").toLowerCase();
-    
-    const isPDF = ext === "pdf" || fileType.includes("pdf");
-    const isDocx = ext === "docx" || fileType.includes("wordprocessingml") || fileType.includes("officedocument") || fileType.includes("docx");
-    const isDoc = ext === "doc" || fileType.includes("msword") || fileType.includes("doc");
+
+    const { isPDF, isDocx, isDoc } = detectFileType(file.name, { mimeType: file.type });
 
     if (!isPDF && !isDocx && !isDoc) {
-      setError(`Supported formats: PDF (.pdf) and Word (.docx, .doc). Received: ${name || "Unknown"} (${file.type || "unknown type"})`);
+      setError(`Supported formats: PDF (.pdf) and Word (.docx, .doc). Received: ${file.name || "Unknown"} (${file.type || "unknown type"})`);
       return;
     }
 
     startLoadingPipeline(file.name);
 
     try {
-      // Convert file to base64
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = async () => {
         const base64String = (reader.result as string).split(",")[1];
 
-        // Fetch parsing API
-        const response = await fetch("/api/parse-resume", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            fileData: base64String,
-            fileName: file.name,
-          }),
+        const result = await apiPost<{ data: Record<string, unknown> }>("/api/parse-resume", {
+          fileData: base64String,
+          fileName: file.name,
         });
 
-        const json = await response.json();
-
-        if (response.ok && json.success && json.data) {
-          // Map response fields to include individual IDs
-          const rawData = json.data;
-          const mappedPortfolio: PortfolioData = {
-            name: rawData.name || "Alexander Vance",
-            title: rawData.title || "Specialist Lead",
-            email: rawData.email || "",
-            phone: rawData.phone || "",
-            location: rawData.location || "",
-            website: rawData.website || "",
-            github: rawData.github || "",
-            linkedin: rawData.linkedin || "",
-            summary: rawData.summary || "",
-            skills: rawData.skills || [],
-            experience: (rawData.experience || []).map((exp: any, i: number) => ({
-              id: `exp-${Date.now()}-${i}`,
-              role: exp.role || "",
-              company: exp.company || "",
-              period: exp.period || "",
-              description: exp.description || "",
-            })),
-            education: (rawData.education || []).map((edu: any, i: number) => ({
-              id: `edu-${Date.now()}-${i}`,
-              degree: edu.degree || "",
-              school: edu.school || "",
-              period: edu.period || "",
-              description: edu.description || "",
-            })),
-            projects: (rawData.projects || []).map((proj: any, i: number) => ({
-              id: `proj-${Date.now()}-${i}`,
-              name: proj.name || "",
-              description: proj.description || "",
-              technologies: proj.technologies || [],
-              link: proj.link || "",
-            })),
-          };
-
-          onParseComplete(mappedPortfolio);
+        if (result.success === false) {
+          setError(result.error || "Failed parsing the document. Text extraction empty.");
         } else {
-          setError(json.error || "Failed parsing the document. Text extraction empty.");
+          const json = result.data as any;
+          const rawData = json.data || json;
+          onParseComplete(mapRawToPortfolio(rawData));
         }
         stopLoadingPipeline();
       };

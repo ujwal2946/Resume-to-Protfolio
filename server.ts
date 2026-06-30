@@ -6,6 +6,7 @@ import { createServer as createViteServer } from "vite";
 import * as dotenv from "dotenv";
 import fs from "fs";
 import mammoth from "mammoth";
+import { detectFileType } from "./src/utils/parseUtils";
 
 dotenv.config();
 
@@ -130,13 +131,7 @@ Convert the extracted details into a flawless resume profile JSON structure.`;
         required: ["name", "title", "email", "phone", "location", "summary", "skills", "experience", "education", "projects"]
       };
 
-      const lowerName = (fileName || "").toLowerCase();
-      const startsWithPDF = fileData.startsWith("JVBERi"); // %PDF-
-      const startsWithZip = fileData.startsWith("UEsDB"); // PK.. zip format of docx
-      
-      const isPDF = lowerName.endsWith(".pdf") || startsWithPDF;
-      const isDocx = lowerName.endsWith(".docx") || (!isPDF && startsWithZip);
-      const isDoc = lowerName.endsWith(".doc") && !isDocx;
+      const { isPDF, isDocx, isDoc } = detectFileType(fileName || "", { base64Data: fileData });
 
       let response;
 

@@ -1,6 +1,9 @@
 import React from "react";
 import { PortfolioData, ExperienceItem, EducationItem, ProjectItem } from "../types";
 import AIPolishButton from "./AIPolishButton";
+import { addItem, updateItem, removeItem } from "../utils/listHelpers";
+import { generateId } from "../utils/idGenerator";
+import { parseCommaSeparated } from "../utils/parseUtils";
 import { 
   Plus, 
   Trash2, 
@@ -59,95 +62,69 @@ export default function PortfolioForm({ data, onChange }: PortfolioFormProps) {
 
   const addExperience = () => {
     const newExp: ExperienceItem = {
-      id: `exp-${Date.now()}`,
+      id: generateId("exp"),
       role: "",
       company: "",
       period: "",
       description: "",
     };
-    updateField("experience", [...data.experience, newExp]);
+    updateField("experience", addItem(data.experience, newExp));
   };
 
   const updateExperience = (id: string, field: keyof ExperienceItem, value: string) => {
-    const updated = data.experience.map((item) => {
-      if (item.id === id) {
-        return { ...item, [field]: value };
-      }
-      return item;
-    });
-    updateField("experience", updated);
+    updateField("experience", updateItem(data.experience, id, field, value));
   };
 
   const removeExperience = (id: string) => {
-    updateField("experience", data.experience.filter((item) => item.id !== id));
+    updateField("experience", removeItem(data.experience, id));
   };
 
   const addEducation = () => {
     const newEdu: EducationItem = {
-      id: `edu-${Date.now()}`,
+      id: generateId("edu"),
       degree: "",
       school: "",
       period: "",
       description: "",
     };
-    updateField("education", [...data.education, newEdu]);
+    updateField("education", addItem(data.education, newEdu));
   };
 
   const updateEducation = (id: string, field: keyof EducationItem, value: string) => {
-    const updated = data.education.map((item) => {
-      if (item.id === id) {
-        return { ...item, [field]: value };
-      }
-      return item;
-    });
-    updateField("education", updated);
+    updateField("education", updateItem(data.education, id, field, value));
   };
 
   const removeEducation = (id: string) => {
-    updateField("education", data.education.filter((item) => item.id !== id));
+    updateField("education", removeItem(data.education, id));
   };
 
   const addProject = () => {
     const newProject: ProjectItem = {
-      id: `proj-${Date.now()}`,
+      id: generateId("proj"),
       name: "",
       description: "",
       technologies: [],
       link: "",
     };
-    updateField("projects", [...data.projects, newProject]);
+    updateField("projects", addItem(data.projects, newProject));
   };
 
-  const updateProject = (id: string, field: keyof ProjectItem, value: any) => {
-    const updated = data.projects.map((item) => {
-      if (item.id === id) {
-        return { ...item, [field]: value };
-      }
-      return item;
-    });
-    updateField("projects", updated);
+  const updateProject = (id: string, field: keyof ProjectItem, value: ProjectItem[keyof ProjectItem]) => {
+    updateField("projects", updateItem(data.projects, id, field, value));
   };
 
   const removeProject = (id: string) => {
-    updateField("projects", data.projects.filter((item) => item.id !== id));
+    updateField("projects", removeItem(data.projects, id));
   };
 
   const handleSkillsChange = (text: string) => {
     setSkillsRaw(text);
-    const list = text.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
-    updateField("skills", list);
+    updateField("skills", parseCommaSeparated(text));
   };
 
   const handleTechsChange = (id: string, text: string) => {
     setTechsRaw(prev => ({ ...prev, [id]: text }));
-    const list = text.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
-    const updated = data.projects.map((item) => {
-      if (item.id === id) {
-        return { ...item, technologies: list };
-      }
-      return item;
-    });
-    updateField("projects", updated);
+    updateField("projects", updateItem(data.projects, id, "technologies", parseCommaSeparated(text)));
   };
 
   return (
