@@ -77,17 +77,32 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
     }
   };
 
-  const themeThemeStyles = getThemeStyles();
+  const themeStyles = getThemeStyles();
 
-  // Simple copy HTML helper
+  const escapeHTML = (str: string): string => {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  };
+
   const handleCopyHTML = () => {
+    const eName = escapeHTML(data.name);
+    const eTitle = escapeHTML(data.title || "Portfolio");
+    const eSummary = escapeHTML(data.summary);
+    const eEmail = escapeHTML(data.email);
+    const ePhone = escapeHTML(data.phone);
+    const eLocation = escapeHTML(data.location);
+
     const htmlSnippet = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${data.name} - ${data.title || 'Portfolio'}</title>
+    <title>${eName} - ${eTitle}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -97,24 +112,24 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
 <body class="bg-slate-900 text-slate-100 min-h-screen">
     <header class="border-b border-slate-800 bg-slate-950/80 py-12">
         <div class="max-w-4xl mx-auto px-6 text-center">
-            <h1 class="text-4xl font-bold tracking-tight text-white mb-2">${data.name}</h1>
-            <p class="text-indigo-400 text-lg font-medium mb-4">${data.title}</p>
+            <h1 class="text-4xl font-bold tracking-tight text-white mb-2">${eName}</h1>
+            <p class="text-indigo-400 text-lg font-medium mb-4">${eTitle}</p>
             <div class="flex flex-wrap justify-center gap-4 text-sm text-slate-400">
-                ${data.email ? `<span>${data.email}</span>` : ""}
-                ${data.phone ? `<span>${data.phone}</span>` : ""}
-                ${data.location ? `<span>${data.location}</span>` : ""}
+                ${eEmail ? `<span>${eEmail}</span>` : ""}
+                ${ePhone ? `<span>${ePhone}</span>` : ""}
+                ${eLocation ? `<span>${eLocation}</span>` : ""}
             </div>
         </div>
     </header>
     <main class="max-w-4xl mx-auto px-6 py-12 space-y-12">
         <section>
             <h2 class="text-xl font-semibold border-b border-slate-800 pb-2 mb-4 text-indigo-400">Professional Summary</h2>
-            <p class="text-slate-300 leading-relaxed">${data.summary}</p>
+            <p class="text-slate-300 leading-relaxed">${eSummary}</p>
         </section>
         <section>
             <h2 class="text-xl font-semibold border-b border-slate-800 pb-2 mb-4 text-indigo-400">Skills</h2>
             <div class="flex flex-wrap gap-2">
-                ${data.skills.map(s => `<span class="bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-3 py-1 rounded text-sm">${s}</span>`).join("")}
+                ${data.skills.map(s => `<span class="bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-3 py-1 rounded text-sm">${escapeHTML(s)}</span>`).join("")}
             </div>
         </section>
         <section>
@@ -123,11 +138,28 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
                 ${data.experience.map(exp => `
                 <div>
                     <div class="flex flex-col sm:flex-row justify-between mb-1">
-                        <h3 class="font-semibold text-white">${exp.role}</h3>
-                        <span class="text-slate-400 text-sm">${exp.period}</span>
+                        <h3 class="font-semibold text-white">${escapeHTML(exp.role)}</h3>
+                        <span class="text-slate-400 text-sm">${escapeHTML(exp.period)}</span>
                     </div>
-                    <p class="text-slate-400 text-sm font-medium mb-2">${exp.company}</p>
-                    <p class="text-slate-300 text-sm leading-relaxed">${exp.description}</p>
+                    <p class="text-slate-400 text-sm font-medium mb-2">${escapeHTML(exp.company)}</p>
+                    <p class="text-slate-300 text-sm leading-relaxed">${escapeHTML(exp.description)}</p>
+                </div>
+                `).join("")}
+            </div>
+        </section>
+        <section>
+            <h2 class="text-xl font-semibold border-b border-slate-800 pb-2 mb-4 text-indigo-400">Featured Projects</h2>
+            <div class="space-y-6">
+                ${data.projects.map(proj => `
+                <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold text-white">${escapeHTML(proj.name)}</h3>
+                        ${proj.link ? `<a href="${escapeHTML(proj.link.startsWith("http") ? proj.link : "https://" + proj.link)}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 text-sm hover:underline">View &rarr;</a>` : ""}
+                    </div>
+                    <p class="text-slate-300 text-sm leading-relaxed mb-3">${escapeHTML(proj.description)}</p>
+                    <div class="flex flex-wrap gap-1">
+                        ${(proj.technologies || []).map(t => `<span class="bg-indigo-950/60 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded text-xs">${escapeHTML(t)}</span>`).join("")}
+                    </div>
                 </div>
                 `).join("")}
             </div>
@@ -138,11 +170,11 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
                 ${data.education.map(edu => `
                 <div>
                     <div class="flex flex-col sm:flex-row justify-between mb-1">
-                        <h3 class="font-semibold text-white">${edu.degree}</h3>
-                        <span class="text-slate-400 text-sm">${edu.period}</span>
+                        <h3 class="font-semibold text-white">${escapeHTML(edu.degree)}</h3>
+                        <span class="text-slate-400 text-sm">${escapeHTML(edu.period)}</span>
                     </div>
-                    <p class="text-slate-400 text-sm font-medium mb-1">${edu.school}</p>
-                    <p class="text-slate-300 text-sm">${edu.description}</p>
+                    <p class="text-slate-400 text-sm font-medium mb-1">${escapeHTML(edu.school)}</p>
+                    <p class="text-slate-300 text-sm">${escapeHTML(edu.description)}</p>
                 </div>
                 `).join("")}
             </div>
@@ -152,9 +184,12 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
 </html>
     `.trim();
 
-    navigator.clipboard.writeText(htmlSnippet);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
+    navigator.clipboard.writeText(htmlSnippet).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }).catch((err) => {
+      console.error("Clipboard write failed:", err);
+    });
   };
 
   return (
@@ -234,15 +269,15 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
       </div>
 
       {/* Styled Iframe Canvas mimicking a web page */}
-      <div className={`flex-1 overflow-y-auto ${themeThemeStyles.bg} ${themeThemeStyles.fontClass} transition-colors duration-300`}>
+      <div className={`flex-1 overflow-y-auto ${themeStyles.bg} ${themeStyles.fontClass} transition-colors duration-300`}>
         {/* Visual Hero Header */}
-        <div className={`py-12 px-6 sm:px-10 text-center relative overflow-hidden ${themeThemeStyles.headerBg}`}>
+        <div className={`py-12 px-6 sm:px-10 text-center relative overflow-hidden ${themeStyles.headerBg}`}>
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-500 via-indigo-500 to-pink-500 opacity-60" />
           
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">
             {data.name || "Enter Name"}
           </h1>
-          <p className={`text-base sm:text-lg font-medium tracking-wide mb-6 ${themeThemeStyles.accentColor}`}>
+          <p className={`text-base sm:text-lg font-medium tracking-wide mb-6 ${themeStyles.accentColor}`}>
             {data.title || "Elite Professional Title"}
           </p>
 
@@ -267,7 +302,7 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
               </span>
             )}
             {data.website && (
-              <a href={data.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:underline">
+              <a href={data.website.startsWith('http') ? data.website : `https://${data.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:underline">
                 <Globe className="w-3.5 h-3.5" />
                 <span>Website</span>
               </a>
@@ -292,7 +327,7 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
           {/* Summary Block */}
           {data.summary && (
             <div className="space-y-3">
-              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeThemeStyles.accentColor} ${themeThemeStyles.divider}`}>
+              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeStyles.accentColor} ${themeStyles.divider}`}>
                 <span>About Me</span>
               </h2>
               <p className="text-sm sm:text-base leading-relaxed opacity-90 whitespace-pre-line">
@@ -304,14 +339,14 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
           {/* Core Expertise Skills */}
           {data.skills && data.skills.length > 0 && (
             <div className="space-y-3">
-              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeThemeStyles.accentColor} ${themeThemeStyles.divider}`}>
+              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeStyles.accentColor} ${themeStyles.divider}`}>
                 <span>Skills & Expertise</span>
               </h2>
               <div className="flex flex-wrap gap-2 pt-1">
                 {data.skills.map((skill, index) => (
                   <span
                     key={index}
-                    className={`px-3 py-1 rounded text-xs font-semibold ${themeThemeStyles.badgeBg}`}
+                    className={`px-3 py-1 rounded text-xs font-semibold ${themeStyles.badgeBg}`}
                   >
                     {skill}
                   </span>
@@ -323,7 +358,7 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
           {/* Professional Work Experience */}
           {data.experience && data.experience.length > 0 && (
             <div className="space-y-5">
-              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeThemeStyles.accentColor} ${themeThemeStyles.divider}`}>
+              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeStyles.accentColor} ${themeStyles.divider}`}>
                 <span>Professional Experience</span>
               </h2>
               <div className="space-y-6">
@@ -337,7 +372,7 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
                         {exp.period}
                       </span>
                     </div>
-                    <p className={`text-sm font-semibold mb-2 opacity-80 flex items-center gap-1.5 ${themeThemeStyles.accentColor}`}>
+                    <p className={`text-sm font-semibold mb-2 opacity-80 flex items-center gap-1.5 ${themeStyles.accentColor}`}>
                       <Briefcase className="w-3.5 h-3.5 inline-block" />
                       {exp.company}
                     </p>
@@ -355,12 +390,12 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
           {/* Interactive Project Showcase */}
           {data.projects && data.projects.length > 0 && (
             <div className="space-y-5">
-              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeThemeStyles.accentColor} ${themeThemeStyles.divider}`}>
+              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeStyles.accentColor} ${themeStyles.divider}`}>
                 <span>Featured Projects</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                 {data.projects.map((project) => (
-                  <div key={project.id} className={`p-4 rounded-xl flex flex-col justify-between ${themeThemeStyles.cardBg}`}>
+                  <div key={project.id} className={`p-4 rounded-xl flex flex-col justify-between ${themeStyles.cardBg}`}>
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-2">
                         <h4 className="font-bold text-sm tracking-tight">{project.name}</h4>
@@ -369,7 +404,7 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
                             href={project.link.startsWith('http') ? project.link : `https://${project.link}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`p-1 rounded hover:bg-current/10 transition duration-150 ${themeThemeStyles.accentColor}`}
+                            className={`p-1 rounded hover:bg-current/10 transition duration-150 ${themeStyles.accentColor}`}
                             title="Visit Project Link"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
@@ -396,7 +431,7 @@ export default function PortfolioPreview({ data }: PortfolioPreviewProps) {
           {/* Academic Journey Education */}
           {data.education && data.education.length > 0 && (
             <div className="space-y-5 pb-8">
-              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeThemeStyles.accentColor} ${themeThemeStyles.divider}`}>
+              <h2 className={`text-sm tracking-widest uppercase font-bold border-b pb-1 flex items-center gap-2 ${themeStyles.accentColor} ${themeStyles.divider}`}>
                 <span>Education</span>
               </h2>
               <div className="space-y-5">

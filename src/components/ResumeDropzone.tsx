@@ -48,6 +48,8 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
     }
   };
 
+  const MAX_FILE_SIZE_MB = 15;
+
   const handleFile = async (file: File) => {
     if (!file) return;
     
@@ -61,23 +63,26 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
     
     const isPDF = ext === "pdf" || fileType.includes("pdf");
     const isDocx = ext === "docx" || fileType.includes("wordprocessingml") || fileType.includes("officedocument") || fileType.includes("docx");
-    const isDoc = ext === "doc" || fileType.includes("msword") || fileType.includes("doc");
 
-    if (!isPDF && !isDocx && !isDoc) {
-      setError(`Supported formats: PDF (.pdf) and Word (.docx, .doc). Received: ${name || "Unknown"} (${file.type || "unknown type"})`);
+    if (!isPDF && !isDocx) {
+      setError(`Supported formats: PDF (.pdf) and Word (.docx). Received: ${name || "Unknown"} (${file.type || "unknown type"})`);
+      return;
+    }
+
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > MAX_FILE_SIZE_MB) {
+      setError(`File is too large (${fileSizeMB.toFixed(1)} MB). Maximum allowed size is ${MAX_FILE_SIZE_MB} MB.`);
       return;
     }
 
     startLoadingPipeline(file.name);
 
-    try {
-      // Convert file to base64
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      try {
         const base64String = (reader.result as string).split(",")[1];
 
-        // Fetch parsing API
         const response = await fetch("/api/parse-resume", {
           method: "POST",
           headers: {
@@ -92,11 +97,10 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
         const json = await response.json();
 
         if (response.ok && json.success && json.data) {
-          // Map response fields to include individual IDs
           const rawData = json.data;
           const mappedPortfolio: PortfolioData = {
-            name: rawData.name || "Alexander Vance",
-            title: rawData.title || "Specialist Lead",
+            name: rawData.name || "",
+            title: rawData.title || "",
             email: rawData.email || "",
             phone: rawData.phone || "",
             location: rawData.location || "",
@@ -132,18 +136,18 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
         } else {
           setError(json.error || "Failed parsing the document. Text extraction empty.");
         }
+      } catch (err: any) {
+        console.error(err);
+        setError("An unexpected network or server error occurred.");
+      } finally {
         stopLoadingPipeline();
-      };
+      }
+    };
 
-      reader.onerror = () => {
-        setError("Error occurred reading local file bytes.");
-        stopLoadingPipeline();
-      };
-    } catch (err: any) {
-      console.error(err);
-      setError("An unexpected network or server error occurred.");
+    reader.onerror = () => {
+      setError("Error occurred reading local file bytes.");
       stopLoadingPipeline();
-    }
+    };
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -209,7 +213,7 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
             ref={fileInputRef}
             type="file"
             className="hidden"
-            accept=".pdf,.docx,.doc"
+            accept=".pdf,.docx"
             onChange={(e) => {
               if (e.target.files && e.target.files[0]) {
                 handleFile(e.target.files[0]);
@@ -233,7 +237,7 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800/60 flex items-center gap-1.5">
               <FileText className="w-3 h-3 text-indigo-400" />
-              <span>PDF or Word (.pdf, .docx, .doc)</span>
+              <span>PDF or Word (.pdf, .docx)</span>
             </span>
           </div>
 
