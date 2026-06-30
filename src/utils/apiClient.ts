@@ -24,7 +24,15 @@ export async function apiPost<T>(
     body: JSON.stringify(body),
   });
 
-  const json = await response.json();
+  let json: any;
+  try {
+    json = await response.json();
+  } catch {
+    return {
+      success: false,
+      error: `Request failed with status ${response.status} (non-JSON response)`,
+    };
+  }
 
   if (response.ok && json.success) {
     return { success: true, data: json as T };
@@ -38,7 +46,16 @@ export async function apiPost<T>(
 
 export async function apiGet<T>(url: string): Promise<ApiResponse<T>> {
   const response = await fetch(url);
-  const json = await response.json();
+
+  let json: any;
+  try {
+    json = await response.json();
+  } catch {
+    return {
+      success: false,
+      error: `Request failed with status ${response.status} (non-JSON response)`,
+    };
+  }
 
   if (response.ok && json.success !== false) {
     return { success: true, data: json as T };

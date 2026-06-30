@@ -67,21 +67,27 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = async () => {
-        const base64String = (reader.result as string).split(",")[1];
+        try {
+          const base64String = (reader.result as string).split(",")[1];
 
-        const result = await apiPost<{ data: Record<string, unknown> }>("/api/parse-resume", {
-          fileData: base64String,
-          fileName: file.name,
-        });
+          const result = await apiPost<{ data: Record<string, unknown> }>("/api/parse-resume", {
+            fileData: base64String,
+            fileName: file.name,
+          });
 
-        if (result.success === false) {
-          setError(result.error || "Failed parsing the document. Text extraction empty.");
-        } else {
-          const json = result.data as any;
-          const rawData = json.data || json;
-          onParseComplete(mapRawToPortfolio(rawData));
+          if (result.success === false) {
+            setError(result.error || "Failed parsing the document. Text extraction empty.");
+          } else {
+            const json = result.data as any;
+            const rawData = json.data || json;
+            onParseComplete(mapRawToPortfolio(rawData));
+          }
+        } catch (err: any) {
+          console.error(err);
+          setError("An unexpected network or server error occurred.");
+        } finally {
+          stopLoadingPipeline();
         }
-        stopLoadingPipeline();
       };
 
       reader.onerror = () => {
