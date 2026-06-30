@@ -75,64 +75,84 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = async () => {
-        const base64String = (reader.result as string).split(",")[1];
+        try {
+          const base64String = (reader.result as string).split(",")[1];
 
-        // Fetch parsing API
-        const response = await fetch("/api/parse-resume", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            fileData: base64String,
-            fileName: file.name,
-          }),
-        });
+          // Fetch parsing API
+          let response: Response;
+          try {
+            response = await fetch("/api/parse-resume", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                fileData: base64String,
+                fileName: file.name,
+              }),
+            });
+          } catch (networkErr) {
+            setError("Network error: could not reach the server. Is the backend running?");
+            stopLoadingPipeline();
+            return;
+          }
 
-        const json = await response.json();
+          let json;
+          try {
+            json = await response.json();
+          } catch (jsonErr) {
+            setError(`Server returned an invalid response (HTTP ${response.status}). Please try again.`);
+            stopLoadingPipeline();
+            return;
+          }
 
-        if (response.ok && json.success && json.data) {
-          // Map response fields to include individual IDs
-          const rawData = json.data;
-          const mappedPortfolio: PortfolioData = {
-            name: rawData.name || "Alexander Vance",
-            title: rawData.title || "Specialist Lead",
-            email: rawData.email || "",
-            phone: rawData.phone || "",
-            location: rawData.location || "",
-            website: rawData.website || "",
-            github: rawData.github || "",
-            linkedin: rawData.linkedin || "",
-            summary: rawData.summary || "",
-            skills: rawData.skills || [],
-            experience: (rawData.experience || []).map((exp: any, i: number) => ({
-              id: `exp-${Date.now()}-${i}`,
-              role: exp.role || "",
-              company: exp.company || "",
-              period: exp.period || "",
-              description: exp.description || "",
-            })),
-            education: (rawData.education || []).map((edu: any, i: number) => ({
-              id: `edu-${Date.now()}-${i}`,
-              degree: edu.degree || "",
-              school: edu.school || "",
-              period: edu.period || "",
-              description: edu.description || "",
-            })),
-            projects: (rawData.projects || []).map((proj: any, i: number) => ({
-              id: `proj-${Date.now()}-${i}`,
-              name: proj.name || "",
-              description: proj.description || "",
-              technologies: proj.technologies || [],
-              link: proj.link || "",
-            })),
-          };
+          if (response.ok && json.success && json.data) {
+            // Map response fields to include individual IDs
+            const rawData = json.data;
+            const mappedPortfolio: PortfolioData = {
+              name: rawData.name || "Alexander Vance",
+              title: rawData.title || "Specialist Lead",
+              email: rawData.email || "",
+              phone: rawData.phone || "",
+              location: rawData.location || "",
+              website: rawData.website || "",
+              github: rawData.github || "",
+              linkedin: rawData.linkedin || "",
+              summary: rawData.summary || "",
+              skills: rawData.skills || [],
+              experience: (rawData.experience || []).map((exp: any, i: number) => ({
+                id: `exp-${Date.now()}-${i}`,
+                role: exp.role || "",
+                company: exp.company || "",
+                period: exp.period || "",
+                description: exp.description || "",
+              })),
+              education: (rawData.education || []).map((edu: any, i: number) => ({
+                id: `edu-${Date.now()}-${i}`,
+                degree: edu.degree || "",
+                school: edu.school || "",
+                period: edu.period || "",
+                description: edu.description || "",
+              })),
+              projects: (rawData.projects || []).map((proj: any, i: number) => ({
+                id: `proj-${Date.now()}-${i}`,
+                name: proj.name || "",
+                description: proj.description || "",
+                technologies: proj.technologies || [],
+                link: proj.link || "",
+              })),
+            };
 
-          onParseComplete(mappedPortfolio);
-        } else {
-          setError(json.error || "Failed parsing the document. Text extraction empty.");
+            onParseComplete(mappedPortfolio);
+          } else {
+            setError(json.error || "Failed parsing the document. Text extraction empty.");
+          }
+          stopLoadingPipeline();
+        } catch (err: any) {
+          console.error("Error during resume upload processing:", err);
+          setError(err.message || "An unexpected error occurred while processing the file.");
+          stopLoadingPipeline();
         }
-        stopLoadingPipeline();
       };
 
       reader.onerror = () => {
@@ -141,7 +161,7 @@ export default function ResumeDropzone({ onParseComplete }: ResumeDropzoneProps)
       };
     } catch (err: any) {
       console.error(err);
-      setError("An unexpected network or server error occurred.");
+      setError("An unexpected error occurred while reading the file.");
       stopLoadingPipeline();
     }
   };
