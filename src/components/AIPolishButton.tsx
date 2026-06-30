@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Sparkles, Scissors, List, Maximize, Loader2, RefreshCw } from "lucide-react";
+import { apiPost } from "../utils/apiClient";
 
 interface AIPolishButtonProps {
   currentText: string;
@@ -16,21 +17,21 @@ export default function AIPolishButton({ currentText, onUpdate, fieldName }: AIP
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/edit-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: currentText,
-          command,
-          fieldName,
-        }),
+      const result = await apiPost<{ enhancedText?: string }>("/api/edit-content", {
+        text: currentText,
+        command,
+        fieldName: fieldName || "",
       });
 
-      const json = await response.json();
-      if (json.success && json.enhancedText) {
-        onUpdate(json.enhancedText);
+      if (result.success === false) {
+        setError(result.error || "Enhancement failed.");
       } else {
-        setError(json.error || "Enhancement failed.");
+        const enhanced = (result.data as any).enhancedText;
+        if (enhanced) {
+          onUpdate(enhanced);
+        } else {
+          setError("Enhancement failed.");
+        }
       }
     } catch (err: any) {
       console.error(err);
