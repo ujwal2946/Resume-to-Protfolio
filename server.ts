@@ -6,20 +6,21 @@ import { createServer as createViteServer } from "vite";
 import * as dotenv from "dotenv";
 import fs from "fs";
 import mammoth from "mammoth";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
-// Resolve file paths conditionally to support both ESM in development and bundled CJS in production
-const resolvedFilename = typeof import.meta !== "undefined" && import.meta.url
-  ? fileURLToPath(import.meta.url)
-  : "";
-const resolvedDirname = resolvedFilename 
-  ? path.dirname(resolvedFilename) 
-  : process.cwd();
+let resolvedDirname: string;
+try {
+  const resolvedFilename = fileURLToPath(import.meta.url);
+  resolvedDirname = path.dirname(resolvedFilename);
+} catch {
+  resolvedDirname = process.cwd();
+}
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = parseInt(process.env.PORT || "3000", 10);
 
   // Increase body size limit to support PDF base64 payloads
   app.use(express.json({ limit: "25mb" }));
@@ -45,8 +46,16 @@ async function startServer() {
     res.json({ status: "ok", time: new Date().toISOString() });
   });
 
+  const aiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: "Too many requests. Please wait a moment before trying again." },
+  });
+
   // API Route: Parse Resume PDF Text and Structure using Gemini
-  app.post("/api/parse-resume", async (req, res) => {
+  app.post("/api/parse-resume", aiLimiter, async (req, res) => {
     try {
       const { fileData, fileName } = req.body;
 
@@ -185,11 +194,6 @@ Convert the extracted details into a flawless resume profile JSON structure.`;
             responseSchema: schema
           }
         });
-      } else if (isDoc) {
-        return res.status(400).json({
-          success: false,
-          error: "Older Word formats (.doc) are not directly supported. Please save your file as (.docx) or PDF and upload again.",
-        });
       } else {
         return res.status(400).json({
           success: false,
@@ -197,8 +201,30 @@ Convert the extracted details into a flawless resume profile JSON structure.`;
         });
       }
 
-      const responseText = response.text || "{}";
-      const structuredData = JSON.parse(responseText.trim());
+      const responseText = response.text;
+      if (!responseText || !responseText.trim()) {
+        return res.status(502).json({
+          success: false,
+          error: "AI returned an empty response. Please try again.",
+        });
+      }
+
+      let structuredData;
+      try {
+        structuredData = JSON.parse(responseText.trim());
+      } catch {
+        return res.status(502).json({
+          success: false,
+          error: "AI returned malformed data. Please try again.",
+        });
+      }
+
+      if (!structuredData.name && !structuredData.title && !structuredData.summary) {
+        return res.status(422).json({
+          success: false,
+          error: "Could not extract meaningful data from the document. Please ensure it is a valid resume.",
+        });
+      }
 
       return res.json({
         success: true,
@@ -215,7 +241,7 @@ Convert the extracted details into a flawless resume profile JSON structure.`;
   });
 
   // API Route: Tailor or Enhance individual fields with custom prompt (shorten, professionalize, bullet-points, expand)
-  app.post("/api/edit-content", async (req, res) => {
+  app.post("/api/edit-content", aiLimiter, async (req, res) => {
     try {
       const { text, command, fieldName } = req.body;
 

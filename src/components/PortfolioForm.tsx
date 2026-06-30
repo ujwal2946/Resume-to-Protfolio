@@ -35,10 +35,12 @@ export default function PortfolioForm({ data, onChange }: PortfolioFormProps) {
     return raw;
   });
 
-  // Keep raw buffers in sync when data updates externally (e.g. on demo reset, or parse complete)
+  const skillsKey = data.skills ? data.skills.join(",") : "";
+  const projectsKey = data.projects ? data.projects.map(p => `${p.id}:${(p.technologies || []).join(",")}`).join("|") : "";
+
   React.useEffect(() => {
     setSkillsRaw(data.skills ? data.skills.join(", ") : "");
-  }, [data.skills]);
+  }, [skillsKey]);
 
   React.useEffect(() => {
     const raw: Record<string, string> = {};
@@ -48,7 +50,7 @@ export default function PortfolioForm({ data, onChange }: PortfolioFormProps) {
       });
     }
     setTechsRaw(raw);
-  }, [data.projects]);
+  }, [projectsKey]);
 
   const updateField = (field: keyof PortfolioData, value: any) => {
     onChange({

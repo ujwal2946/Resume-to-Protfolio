@@ -6,14 +6,9 @@ import PortfolioForm from "./components/PortfolioForm";
 import PortfolioPreview from "./components/PortfolioPreview";
 import { 
   Sparkles, 
-  FileText, 
-  Settings, 
   Cpu, 
-  Eye, 
   FileCheck2,
   Undo2,
-  RefreshCw,
-  ExternalLink
 } from "lucide-react";
 
 export default function App() {
